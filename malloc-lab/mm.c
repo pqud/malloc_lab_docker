@@ -46,7 +46,7 @@ team_t team = {
 
 #define WSIZE sizeof(void *) //워드와 헤더풋터 사이즈(바이트), 32비트는 4, 64비트에서는 8바이트 
 #define DSIZE (2*WSIZE) //더블 워드 사이즈(바이트)
-#define MINBLOCKSIZE (2*DSIZE) //헤더+풋터+payload 최소 블록 크기. place 비교용 
+#define MINBLOCKSIZE 24 //헤더+풋터+payload 최소 블록 크기. place 비교용 
 #define CHUNKSIZE (1<<7) //초기 가용 블록과 힙 확장을 위한 크기(바이트)
 
 #define MAX(x,y) ((x)>(y) ? (x):(y)) 
@@ -241,9 +241,11 @@ void *mm_malloc(size_t size)
     size_t newsize;
     size_t extendsize;
     char *bp;
-    
-    // fprintf(stderr, "Start new malloc \n");
-    //블록 크기 조정 
+
+    if(heap_listp==0){
+        mm_init();
+    }
+
     if(size==0) {
         return NULL;
     }
