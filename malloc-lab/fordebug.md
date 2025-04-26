@@ -462,6 +462,7 @@ Total          77%  112372  0.355414   316
 
 Perf index = 46 (util) + 21 (thru) = 67/100
 
+minsize를 2*dsize로 함.
 
 
 ```C
