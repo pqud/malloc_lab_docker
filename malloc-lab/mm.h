@@ -7,6 +7,7 @@ extern void *mm_realloc(void *ptr, size_t size);
 static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static char *heap_listp;
+static void *prev_bp;
 static void *find_fit(size_t asize);
 static void place(void *bp, size_t asize);
 
@@ -21,6 +22,8 @@ typedef struct {
     char *id1;      /* login ID of first member */
     char *name2;    /* full name of second member (if any) */
     char *id2;      /* login ID of second member */
+    char *name3;    /* full name of second member (if any) */
+    char *id3;      /* login ID of second member */
 } team_t;
 
 extern team_t team;
