@@ -7,6 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/malloc-lab/mdriver",
             "args": [
+                "-v"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/malloc-lab",
