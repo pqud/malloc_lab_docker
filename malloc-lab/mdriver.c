@@ -242,6 +242,15 @@ int main(int argc, char **argv)
 		}
 		else if (*team.name2 != '\0')
 			printf("Member 2 :%s:%s\n", team.name2, team.id2);
+
+		if (((*team.name3 != '\0') && (*team.id3 == '\0')) ||
+			((*team.name3 == '\0') && (*team.id3 != '\0')))
+		{
+			printf("ERROR.  You must fill in all or none of the team member 2 ID fields!\n");
+			exit(1);
+		}
+		else if (*team.name3 != '\0')
+			printf("Member 3 :%s:%s\n", team.name3, team.id3);
 	}
 
 	/*
