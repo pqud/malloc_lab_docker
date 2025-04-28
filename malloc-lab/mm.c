@@ -70,6 +70,8 @@ team_t team = {
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 /** */
 
+static int static_idx;
+
 /*
  * mm_init - initialize the malloc package.
  */
@@ -86,6 +88,7 @@ int mm_init(void)
 	heap_listp += (2*WSIZE);
 	if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
+	static_idx = 0;
 	return 0;
 }
 	
@@ -96,7 +99,7 @@ static void *extend_heap(size_t words)
 	
 	// allocate an even number of words to maintain alignment
 	size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
-	// fprintf(stderr, "extend_heap: request %zu bytes\n", size);   // 추가
+	fprintf(stderr, "extend_heap: request %zu bytes %d\n", size, ++static_idx);   // 추가
 
 	if ((long)(bp = mem_sbrk(size)) == -1)
 		return NULL;
