@@ -196,7 +196,6 @@ static void *coalesce(void *bp)
 		size += GET_SIZE(HDRP(PREV_BLKP(bp)));
 		PUT(FTRP(bp), PACK(size, 0));
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
-		if(bp == prev_bp) prev_bp = PREV_BLKP(prev_bp);
 		bp = PREV_BLKP(bp);
 	}
 	
@@ -205,7 +204,6 @@ static void *coalesce(void *bp)
 		// size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(HDRP(NEXT_BLKP(bp))); 이렇게 해더로 뒤에 친구 사이즈를 알 수도 있지 않나?
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
 		PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
-		if(bp == prev_bp) prev_bp = PREV_BLKP(prev_bp);
 		bp = PREV_BLKP(bp);
 	}
 	return bp;
@@ -213,27 +211,17 @@ static void *coalesce(void *bp)
 
 static void *find_fit(size_t asize)
 {
-    // next fit search
-    void *bp;
+	// first fit search
+	void *bp;
 
-	
-    for (bp = NEXT_BLKP(prev_bp); GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
-    {
-        if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
-        {
-			prev_bp = bp;
-            return bp;
-        }
-    }
-    for (bp = heap_listp; bp != prev_bp; bp = NEXT_BLKP(bp))
-    {
+	for ( bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
+	{
 		if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
-        {
-			prev_bp = bp;
-            return bp;
-        }
-    }
-    return  NULL;
+		{
+			return bp;
+		}
+	}
+	return  NULL;
 }
 
 static void place(void *bp, size_t asize)
