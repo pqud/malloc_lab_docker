@@ -9,7 +9,12 @@
                 "-g",
                 "${file}",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-O0", 
+                "-fno-omit-frame-pointer",
+                "-fno-inline",
+                "-Wall", 
+                "-Wextra"
             ],
             "options": {
                 "cwd": "${fileDirname}"
