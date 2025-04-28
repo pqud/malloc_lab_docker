@@ -80,12 +80,12 @@ int mm_init(void)
 	// create the initial empty heap
 	if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
 		return -1;
-	prev_bp = heap_listp;
 	PUT(heap_listp, 0); // alignment padding
 	PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // prologue header
 	PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // prologue footer
 	PUT(heap_listp + (3*WSIZE), PACK(0, 1)); // Epliogue header
 	heap_listp += (2*WSIZE);
+	prev_bp = heap_listp;
 	if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
 	static_idx = 0;
@@ -99,7 +99,7 @@ static void *extend_heap(size_t words)
 	
 	// allocate an even number of words to maintain alignment
 	size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
-	fprintf(stderr, "extend_heap: request %zu bytes %d\n", size, ++static_idx);   // 추가
+	// fprintf(stderr, "extend_heap: request %zu bytes\n", size);   // 추가
 
 	if ((long)(bp = mem_sbrk(size)) == -1)
 		return NULL;
@@ -186,6 +186,7 @@ static void *coalesce(void *bp)
 	size_t size = GET_SIZE(HDRP(bp));
 	
 	if (prev_alloc && next_alloc) { //  case 1. 전부 할당된 경우.
+		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
 		return bp;
 	}
 	
@@ -198,7 +199,6 @@ static void *coalesce(void *bp)
 		size += GET_SIZE(HDRP(PREV_BLKP(bp)));
 		PUT(FTRP(bp), PACK(size, 0));
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
-		if(bp == prev_bp) prev_bp = PREV_BLKP(prev_bp);
 		bp = PREV_BLKP(bp);
 	}
 	
@@ -207,9 +207,10 @@ static void *coalesce(void *bp)
 		// size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(HDRP(NEXT_BLKP(bp))); 이렇게 해더로 뒤에 친구 사이즈를 알 수도 있지 않나?
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
 		PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
-		if(bp == prev_bp) prev_bp = PREV_BLKP(prev_bp);
 		bp = PREV_BLKP(bp);
 	}
+	assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
+	prev_bp = bp;
 	return bp;
 }
 
@@ -218,18 +219,23 @@ static void *find_fit(size_t asize)
     // next fit search
     void *bp;
 
-	
-    for (bp = NEXT_BLKP(prev_bp); GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
+	// 
+    for (bp = prev_bp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) //아, prev_bp가 epilogue로 잡히는게 문제인가?
     {
-        if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
+		printf("%d, %d\n",GET_SIZE(HDRP(bp)), GET_SIZE(FTRP(bp)));
+		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
+        if (!GET_ALLOC(HDRP(bp)) && (GET_SIZE(HDRP(bp)) >= asize))
         {
+			
 			prev_bp = bp;
+			// assert((long)prev_bp%DSIZE == 0); // 여기서는 안 걸린다.
             return bp;
         }
     }
-    for (bp = heap_listp; bp != prev_bp; bp = NEXT_BLKP(bp))
+    for (bp = heap_listp; bp <= prev_bp; bp = NEXT_BLKP(bp))
     {
-		if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
+		// printf("bp incrementing: %d\n", bp);
+		if (!GET_ALLOC(HDRP(bp)) && (GET_SIZE(HDRP(bp)) >= asize))
         {
 			prev_bp = bp;
             return bp;
@@ -243,15 +249,18 @@ static void place(void *bp, size_t asize)
     size_t csize = GET_SIZE(HDRP(bp));
     if ((csize - asize) >= (2*DSIZE))
     {
-        PUT(HDRP(bp), PACK(asize, 1));
+		PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
+		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
         bp = NEXT_BLKP(bp);
         PUT(HDRP(bp), PACK(csize-asize, 0));
         PUT(FTRP(bp), PACK(csize-asize, 0));
+		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
     }
     else
     {
-        PUT(HDRP(bp), PACK(csize, 1));
+		PUT(HDRP(bp), PACK(csize, 1));
         PUT(FTRP(bp), PACK(csize, 1));
+		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
     }
 }
