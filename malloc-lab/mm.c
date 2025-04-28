@@ -78,11 +78,12 @@ int mm_init(void)
 	// create the initial empty heap
 	if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1)
 		return -1;
+	prev_bp = heap_listp;
 	PUT(heap_listp, 0); // alignment padding
 	PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // prologue header
 	PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // prologue footer
 	PUT(heap_listp + (3*WSIZE), PACK(0, 1)); // Epliogue header
-	
+	heap_listp += (2*WSIZE);
 	if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
 	return 0;
@@ -217,13 +218,15 @@ static void *find_fit(size_t asize)
     {
         if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
         {
+			prev_bp = bp;
             return bp;
         }
     }
     for (bp = heap_listp; bp != prev_bp; bp = NEXT_BLKP(bp))
     {
-        if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
+		if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
         {
+			prev_bp = bp;
             return bp;
         }
     }
