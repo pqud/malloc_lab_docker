@@ -10,10 +10,10 @@
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
-                "-O0", 
+                "-O0",
                 "-fno-omit-frame-pointer",
                 "-fno-inline",
-                "-Wall", 
+                "-Wall",
                 "-Wextra"
             ],
             "options": {
@@ -44,6 +44,24 @@
             "type": "shell",
             "command": "make",
             "args": [],
+            "group": "build",
+            "dependsOn": [
+                "Clean"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/malloc-lab"
+            }
+        },
+        {
+            "label": "Build mdriver release",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "CFLAGS=-Ofast -funroll-loops -march=native -flto -DNDEBUG"
+            ],
             "group": "build",
             "dependsOn": [
                 "Clean"
