@@ -24,7 +24,30 @@
             "preLaunchTask": "Build mdriver release"
         },
         {
-            "name": "Debug mdriver",
+            "name": "Debug amptjp-bal.rep",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/malloc-lab/mdriver",
+            "args": [
+                "-f",
+                "./traces/amptjp-bal.rep"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/malloc-lab",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Build mdriver"
+        },
+        {
+            "name": "Debug binary-bal.rep",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/malloc-lab/mdriver",
