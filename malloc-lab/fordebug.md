@@ -487,3 +487,132 @@ trace  valid  util     ops      secs  Kops
 Total          77%  112372  0.350421   321
 
 Perf index = 46 (util) + 21 (thru) = 68/100
+
+
+
+
+
+
+
+
+
+-----------------
+```c
+PUT(heap_listp,0);
+    PUT(heap_listp + (1*WSIZE),PACK(DSIZE,1));
+    PUT(heap_listp + (2*WSIZE),PACK(DSIZE,1));
+    PUT(heap_listp + (3*WSIZE),PACK(2*DSIZE,0));//맨처음에 적장한 블럭을 하나 만들고 시작할것!!!
+    PUT(heap_listp + (4*WSIZE),NULL);
+    PUT(heap_listp + (5*WSIZE),NULL);
+    PUT(heap_listp + (6*WSIZE),PACK(2*DSIZE,0));
+    PUT(heap_listp + (7*WSIZE),PACK(0,1));
+    heap_listp += (4*WSIZE);//가용블록의 블록 포인터
+```
+
+원래 6*WSIZE였는데 8*WISZe로 바꾸니까 갑자기 됨 
+
+
+
+
+
+
+bp: 0x7fbbf99dfb10, GET_SIZE(HDRP(bp)): 779648  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf9a9e090, GET_SIZE(HDRP(bp)): 4096  GET_ALLOC(HDRP(bp)): 0
+free_list
+bp: 0x7fbbf99dfb10, GET_SIZE(HDRP(bp)): 779648  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf9a9e090, GET_SIZE(HDRP(bp)): 4096  GET_ALLOC(HDRP(bp)): 0
+
+원래 이상태엇음 
+그런데 이제 malloc(176)을 하니까 
+
+bp: 0x7fbbf99dfab0, GET_SIZE(HDRP(bp)): 96  GET_ALLOC(HDRP(bp)): 1
+bp: 0x7fbbf99dfb10, GET_SIZE(HDRP(bp)): 176  GET_ALLOC(HDRP(bp)): 1
+bp: 0x7fbbf99dfbc0, GET_SIZE(HDRP(bp)): 783568  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf9a9f090, GET_SIZE(HDRP(bp)): 4096  GET_ALLOC(HDRP(bp)): 0
+free_list
+bp: 0x7fbbf99dfbc0, GET_SIZE(HDRP(bp)): 783568  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf9a9f090, GET_SIZE(HDRP(bp)): 4096  GET_ALLOC(HDRP(bp)): 0
+
+일단 여기까진 뭐 문제없는데 그 담에 96을 free한건가 여튼
+
+bp: 0x7fbbf99dfab0, GET_SIZE(HDRP(bp)): 96  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf99dfb10, GET_SIZE(HDRP(bp)): 176  GET_ALLOC(HDRP(bp)): 1
+bp: 0x7fbbf99dfbc0, GET_SIZE(HDRP(bp)): 787664  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf9aa0090, GET_SIZE(HDRP(bp)): 4096  GET_ALLOC(HDRP(bp)): 0
+free_list
+bp: 0x7fbbf99dfab0, GET_SIZE(HDRP(bp)): 96  GET_ALLOC(HDRP(bp)): 0
+bp: 0x7fbbf99dfb10, GET_SIZE(HDRP(bp)): 176  GET_ALLOC(HDRP(bp)): 1
+
+이렇게됨 
+근데 178이 나올 수 있는거냐?
+
+
+
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   88%    5694  0.000152 37411
+ 1       yes   91%    5848  0.000106 55170
+ 2       yes   94%    6648  0.000167 39808
+ 3       yes   96%    5380  0.000115 46905
+ 4       yes   99%   14400  0.000104138196
+ 5       yes   88%    4800  0.000345 13897
+ 6       yes   85%    4800  0.000362 13245
+ 7       yes   54%   12000  0.000695 17266
+ 8       yes   47%   24000  0.000830 28926
+ 9       yes   26%   14401  0.021878   658
+10       yes   45%   14401  0.000700 20582
+Total          74%  112372  0.025454  4415
+
+Perf index = 44 (util) + 40 (thru) = 84/100
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   89%    5694  0.001180  4827
+ 1       yes   91%    5848  0.000558 10475
+ 2       yes   95%    6648  0.001673  3974
+ 3       yes   96%    5380  0.001704  3158
+ 4       yes   99%   14400  0.000107134705
+ 5       yes   88%    4800  0.001204  3988
+ 6       yes   86%    4800  0.001254  3827
+ 7       yes   12%   12000  0.035836   335
+ 8       yes    4%   24000  0.116734   206
+ 9       yes   26%   14401  0.022788   632
+10       yes   45%   14401  0.000873 16488
+Total          66%  112372  0.183910   611
+
+Perf index = 40 (util) + 40 (thru) = 80/100
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   89%    5694  0.000918  6205
+ 1       yes   91%    5848  0.000566 10334
+ 2       yes   95%    6648  0.001814  3666
+ 3       yes   96%    5380  0.001770  3039
+ 4       yes   99%   14400  0.000111129380
+ 5       yes   88%    4800  0.001431  3355
+ 6       yes   86%    4800  0.001160  4137
+ 7       yes   12%   12000  0.036068   333
+ 8       yes    4%   24000  0.115009   209
+ 9       yes   26%   14401  0.022558   638
+10       yes   45%   14401  0.000677 21281
+Total          66%  112372  0.182082   617
+
+Perf index = 40 (util) + 40 (thru) = 80/100
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.004594  1239
+ 1       yes   99%    5848  0.004280  1366
+ 2       yes   99%    6648  0.006192  1074
+ 3       yes   99%    5380  0.004693  1146
+ 4       yes   99%   14400  0.000106135721
+ 5       yes   96%    4800  0.007832   613
+ 6       yes   95%    4800  0.007808   615
+ 7       yes   54%   12000  0.064840   185
+ 8       yes   47%   24000  0.229112   105
+ 9       yes   24%   14401  0.023557   611
+10       yes   30%   14401  0.000945 15234
+Total          76%  112372  0.353959   317
+
+Perf index = 46 (util) + 21 (thru) = 67/100
