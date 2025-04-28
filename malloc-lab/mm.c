@@ -82,7 +82,7 @@ int mm_init(void)
 	PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // prologue header
 	PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // prologue footer
 	PUT(heap_listp + (3*WSIZE), PACK(0, 1)); // Epliogue header
-	
+	heap_listp += (2*WSIZE);
 	if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
 	return 0;
