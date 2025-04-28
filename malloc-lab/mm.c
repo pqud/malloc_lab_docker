@@ -99,6 +99,8 @@ static void *extend_heap(size_t words)
 	
 	// allocate an even number of words to maintain alignment
 	size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+	// fprintf(stderr, "extend_heap: request %zu bytes\n", size);   // 추가
+
 	if ((long)(bp = mem_sbrk(size)) == -1)
 		return NULL;
 	
@@ -227,13 +229,13 @@ static void *find_fit(size_t asize)
 static void place(void *bp, size_t asize)
 {
     size_t csize = GET_SIZE(HDRP(bp));
-    if ((csize - asize) > (2*DSIZE))
+    if ((csize - asize) >= (2*DSIZE))
     {
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
         bp = NEXT_BLKP(bp);
-        PUT(HDRP(bp), PACK(csize-asize, 1));
-        PUT(FTRP(bp), PACK(csize-asize, 1));
+        PUT(HDRP(bp), PACK(csize-asize, 0));
+        PUT(FTRP(bp), PACK(csize-asize, 0));
     }
     else
     {
