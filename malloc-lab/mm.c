@@ -222,7 +222,7 @@ static void *find_fit(size_t asize)
 	// 
     for (bp = prev_bp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) //아, prev_bp가 epilogue로 잡히는게 문제인가?
     {
-		printf("%d, %d\n",GET_SIZE(HDRP(bp)), GET_SIZE(FTRP(bp)));
+		// printf("%d, %d\n",GET_SIZE(HDRP(bp)), GET_SIZE(FTRP(bp)));
 		assert(GET_SIZE(HDRP(bp)) == GET_SIZE(FTRP(bp))); 
         if (!GET_ALLOC(HDRP(bp)) && (GET_SIZE(HDRP(bp)) >= asize))
         {
