@@ -54,6 +54,24 @@
             "options": {
                 "cwd": "${workspaceFolder}/malloc-lab"
             }
+        },
+        {
+            "label": "Build mdriver release",
+            "type": "shell",
+            "command": "make",
+            "args": [
+                "CFLAGS=-Ofast -funroll-loops -march=native -flto -DNDEBUG"
+            ],
+            "group": "build",
+            "dependsOn": [
+                "Clean"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/malloc-lab"
+            }
         }
     ]
 }
