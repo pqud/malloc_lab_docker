@@ -32,7 +32,10 @@ team_t team = {
     /* Second member's full name (leave blank if none) */
     "Harin Lee",
     /* Second member's email address (leave blank if none) */
-    "gbs1823@gmail.com"};
+    "gbs1823@gmail.com",
+	"Eunchae Park",
+	"ghkqh09@gmail.com"
+};
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
