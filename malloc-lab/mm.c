@@ -69,6 +69,12 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
+// macros for explicit free list
+#define GET_PRED(bp)  (GET(bp))
+#define GET_SUCC(bp) (GET((char *) bp + WSIZE))
+#define PUT_PRED(bp, val) (PUT(bp, val))
+#define PUT_SUCC(bp, val) (PUT(((char *) bp + WSIZE), val))
+
 /*
  * mm_init - initialize the malloc package.
  */
@@ -81,7 +87,8 @@ int mm_init(void)
 	PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // prologue header
 	PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // prologue footer
 	PUT(heap_listp + (3*WSIZE), PACK(0, 1)); // Epliogue header
-	
+	heap_listp += 2*WSIZE;
+	free_listp = NULL;
 	if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
 	return 0;
@@ -235,4 +242,14 @@ static void place(void *bp, size_t asize)
         PUT(HDRP(bp), PACK(csize, 1));
         PUT(FTRP(bp), PACK(csize, 1));
     }
+}
+
+static void insert_node(void *bp){
+	if(free_listp != NULL)
+	{
+		PUT_PRED(free_listp, bp);
+	}
+	PUT_SUCC(bp, free_listp);
+	PUT_PRED(bp, NULL);
+	free_listp = bp;
 }
