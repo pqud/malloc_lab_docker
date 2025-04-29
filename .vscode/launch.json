@@ -29,7 +29,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/malloc-lab/mdriver",
             "args": [
-                "-v"
+                "-v",
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/malloc-lab",
@@ -46,13 +46,13 @@
             "preLaunchTask": "Build mdriver"
         },
         {
-            "name": "Debug amptjp-bal.rep",
+            "name": "Debug with selected trace",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/malloc-lab/mdriver",
             "args": [
                 "-f",
-                "./traces/amptjp-bal.rep"
+                "traces/${input:traceFile}"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/malloc-lab",
@@ -68,98 +68,41 @@
             ],
             "preLaunchTask": "Build mdriver"
         },
-        {
-            "name": "Debug binary-bal.rep",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/malloc-lab/mdriver",
-            "args": [
-                "-V",
-                "-f",
-                "short1-bal.rep",
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/malloc-lab",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build mdriver"
-        },
-        {
-            "name": "Debug cccp-bal.rep",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/malloc-lab/mdriver",
-            "args": [
-                "-f",
-                "./traces/cccp-bal.rep"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/malloc-lab",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build mdriver"
-        },
-        {
-            "name": "Debug binary.rep",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/malloc-lab/mdriver",
-            "args": [
-                "-f",
-                "./traces/binary.rep"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/malloc-lab",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build mdriver"
-        },
-        {
-            "name": "Debug binary2-bal.rep",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/malloc-lab/mdriver",
-            "args": [
-                "-f",
-                "./traces/binary2-bal.rep"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/malloc-lab",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ],
-            "preLaunchTask": "Build mdriver"
-        },
-    ]
+    ],
+    "inputs": [
+    {
+      "id": "traceFile",
+      "type": "pickString",
+      "description": "Select a .rep trace file",
+      "options": [
+        // 여기에 ./traces/ 디렉토리의 파일명을 나열하세요.
+        "amptjp-bal.rep",
+        "amptjp.rep",
+        "binary-bal.rep",
+        "binary.rep",
+        "binary2-bal.rep",
+        "binary2.rep",
+        "cccp-bal.rep",
+        "cccp.rep",
+        "coalescing-bal.rep",
+        "coalescing.rep",
+        "cp-decl-bal.rep",
+        "cp-decl.rep",
+        "expr-bal.rep",
+        "expr.rep",
+        "random-bal.rep",
+        "random.rep",
+        "random2-bal.rep",
+        "random2.rep",
+        "realloc-bal.rep",
+        "realloc.rep",
+        "realloc2-bal.rep",
+        "realloc2.rep",
+        "short1-bal.rep",
+        "short1.rep",
+        "short2-bal.rep",
+        "short2.rep"
+      ]
+    }
+  ]
 }

@@ -10,6 +10,9 @@ static char *heap_listp;
 static char *free_listp;
 static void *find_fit(size_t asize);
 static void place(void *bp, size_t asize);
+static void remove_node(void *bp);
+static void insert_node(void *bp);
+static void print_list(void);
 
 /* 
  * Students work in teams of one or two.  Teams enter their team name, 

@@ -73,10 +73,22 @@ team_t team = {
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
 // macros for explicit free list
-#define GET_PRED(bp)  (GET(bp))
-#define GET_SUCC(bp) (GET((char *) bp + WSIZE))
-#define PUT_PRED(bp, val) (PUT(bp, val))
-#define PUT_SUCC(bp, val) (PUT(((char *) bp + WSIZE), val))
+// #define GET_PRED(bp)  (GET(bp))
+// #define GET_SUCC(bp) (GET((char *) bp + WSIZE))
+// #define PUT_PRED(bp, val) (PUT(bp, val))
+// #define PUT_SUCC(bp, val) (PUT(((char *) bp + WSIZE), val))
+
+/// 
+/* payload 영역에 실제 포인터를 저장/읽기 위한 매크로 */
+#define GET_PTR(p)      (*(void **)(p))
+#define PUT_PTR(p, val) (*(void **)(p) = (void *)(val))
+
+/* explicit free list 전용 */
+#define GET_PRED(bp)    GET_PTR(bp)
+#define GET_SUCC(bp)    GET_PTR((char *)(bp) + WSIZE)
+#define PUT_PRED(bp,val) PUT_PTR(bp, val)
+#define PUT_SUCC(bp,val) PUT_PTR((char *)(bp) + WSIZE, val)
+///
 
 /*
  * mm_init - initialize the malloc package.
@@ -104,6 +116,7 @@ static void *extend_heap(size_t words)
 	
 	// allocate an even number of words to maintain alignment
 	size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+	fprintf(stderr, "ERROR: extend size %d\n", size);
 	if ((long)(bp = mem_sbrk(size)) == -1)
 		return NULL;
 	
@@ -189,27 +202,36 @@ static void *coalesce(void *bp)
 	size_t size = GET_SIZE(HDRP(bp));
 	
 	if (prev_alloc && next_alloc) { //  case 1. 전부 할당된 경우.
+		insert_node(bp);
 		return bp;
 	}
 	
 	else if (prev_alloc && !next_alloc) { // case 2. 뒤에 친구가 할당 안 된 경우
+		remove_node(NEXT_BLKP(bp));
+		
 		size += GET_SIZE(HDRP(NEXT_BLKP(bp))); // 뒤에 친구만큼 사이즈 키워주고
 		PUT(HDRP(bp), PACK(size, 0)); // 업데이트 된 사이즈를 토대로 헤더와 푸터 업데이트.
 		PUT(FTRP(bp), PACK(size, 0));
+		insert_node(bp);
 	}
 	else if(!prev_alloc && next_alloc) { // case 3.
+		remove_node(PREV_BLKP(bp));
 		size += GET_SIZE(HDRP(PREV_BLKP(bp)));
 		PUT(FTRP(bp), PACK(size, 0));
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
 		bp = PREV_BLKP(bp);
+		insert_node(bp);
 	}
 	
 	else {
+		remove_node(NEXT_BLKP(bp));
+		remove_node(PREV_BLKP(bp));
 		size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
 		// size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(HDRP(NEXT_BLKP(bp))); 이렇게 해더로 뒤에 친구 사이즈를 알 수도 있지 않나?
 		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
 		PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
 		bp = PREV_BLKP(bp);
+		insert_node(bp);
 	}
 	return bp;
 }
@@ -219,9 +241,10 @@ static void *find_fit(size_t asize)
     // first fit search
     void *bp;
 
-    for ( bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
+    for ( bp = free_listp; bp != NULL; bp = GET_SUCC(bp))
     {
-        if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize)
+		printf("HDRP(bp): %u\n", HDRP(bp));
+        if (GET_SIZE(HDRP(bp)) >= asize)
         {
             return bp;
         }
@@ -229,16 +252,24 @@ static void *find_fit(size_t asize)
     return  NULL;
 }
 
+/**
+ * feature: place the node at certain available block pointed by bp. 
+ * split the block if it's dividable.
+ * 
+ * invariatns
+ */
 static void place(void *bp, size_t asize)
 {
     size_t csize = GET_SIZE(HDRP(bp));
-    if ((csize - asize) > (2*DSIZE))
+	remove_node(bp);
+    if ((csize - asize) >= (2*DSIZE))
     {
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
         bp = NEXT_BLKP(bp);
-        PUT(HDRP(bp), PACK(csize-asize, 1));
-        PUT(FTRP(bp), PACK(csize-asize, 1));
+        PUT(HDRP(bp), PACK(csize-asize, 0));
+        PUT(FTRP(bp), PACK(csize-asize, 0));
+		insert_node(bp);
     }
     else
     {
@@ -247,12 +278,58 @@ static void place(void *bp, size_t asize)
     }
 }
 
-static void insert_node(void *bp){
+/**
+ * feature: insert current block pointed by bp into the free list
+ * 
+ * invariants
+ * 1. 기존 free_listp의 predecessor가 bp가 돼야 함. => assert(GET_PRED(tmp) == bp);
+ */
+static void insert_node(void *bp)
+{
+	void **tmp = free_listp;
 	if(free_listp != NULL)
 	{
-		PUT_PRED(free_listp, bp);
+		PUT_PRED(free_listp, bp); 
+		printf("%p vs %p\n", GET_PRED(free_listp), bp);
+		assert((long)GET_PRED(free_listp) == (long)bp);
 	}
 	PUT_SUCC(bp, free_listp);
 	PUT_PRED(bp, NULL);
+	if (tmp != NULL) assert((long *)GET_PRED(tmp) == (long *)bp); 
 	free_listp = bp;
+	print_list();
+}
+
+
+/**
+ * feature: removes the node pointed by bp
+ * 
+ * invariants
+ * 1. final p_bp and s_bp should connected  => GET_SUCC(p_bp) == s_bp & GET_PRED(s_bp) == p_bp
+ * 2. ㅇㅇ
+ */
+static void remove_node(void *bp)
+{
+	void *p_bp = GET_PRED(bp);
+	void *s_bp = GET_SUCC(bp);
+	if (p_bp != NULL){
+		PUT_SUCC(p_bp, s_bp);
+	} else{
+		free_listp = s_bp;
+	}
+	if(s_bp != NULL){
+		PUT_PRED(s_bp, p_bp);
+	}
+	if(p_bp != NULL) assert(GET_SUCC(p_bp) == s_bp);
+	if(s_bp != NULL) assert(GET_PRED(s_bp) == p_bp);
+	print_list();
+}
+
+static void print_list(void){
+	void *bp;
+	for(bp = free_listp; bp != NULL; bp = GET_SUCC(bp)){
+		printf("%p %u %u %p -> ", GET_PRED(bp),  GET_SIZE(HDRP(bp)), GET_ALLOC(HDRP(bp)) ,GET_SUCC(bp));
+	}
+	printf("end\n");
+
 }

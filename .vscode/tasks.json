@@ -43,7 +43,9 @@
             "label": "Build mdriver",
             "type": "shell",
             "command": "make",
-            "args": [],
+            "args": [
+                "CFLAGS=-O0 -g"
+            ],
             "group": "build",
             "dependsOn": [
                 "Clean"
