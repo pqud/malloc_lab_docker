@@ -8,11 +8,16 @@ static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static char *heap_listp;
 static char *free_listp;
+static int *node_num;
 static void *find_fit(size_t asize);
 static void place(void *bp, size_t asize);
 static void remove_node(void *bp);
 static void insert_node(void *bp);
 static void print_list(void);
+
+void mm_check(void);
+void check_free_list_consistency(void);
+void check_heap_consistency(void);
 
 /* 
  * Students work in teams of one or two.  Teams enter their team name, 
