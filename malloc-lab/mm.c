@@ -49,23 +49,25 @@ team_t team = {
 
 #define WSIZE sizeof(void *) //워드와 헤더풋터 사이즈(바이트), 32비트는 4, 64비트에서는 8바이트 
 #define DSIZE (2*WSIZE) //더블 워드 사이즈(바이트)
-#define MINBLOCKSIZE 4*WSIZE 
+#define MINBLOCKSIZE (4*WSIZE)
 #define CHUNKSIZE (1<<12) //초기 가용 블록과 힙 확장을 위한 크기(바이트)
 
 #define MAX(x,y) ((x)>(y) ? (x):(y)) 
 
 //크기와 할당 비트를 통합해서 헤더와 풋터에 저장할 수 있는 값을 리턴함.
-#define PACK(size, alloc) ((size) | (alloc)) 
+#define PACK(size, alloc) ((size) | (alloc & 0x1)) 
 
 //인자 p가 참조하는 워드를 읽고 씀
 #define GET(p) (*(uintptr_t *)(p))
-#define PUT(p, val) (*(uintptr_t *)(p)=(val))
+
 
 //주소 p에 있는 헤더/풋터의 size를 리턴함.
 #define GET_SIZE(p)     (GET(p) & ~0x7) 
 //주소 p에 있는 헤더/풋터의 할당 비트를 리턴함.
 #define GET_ALLOC(p) (GET(p) & 0x1)
 
+
+#define PUT(p, val) (*(uintptr_t *)(p)=(val))
 //블록의 포인터 bp를 받고, 블록 헤더를 가리키는 포인터를 리턴함.
 #define HDRP(bp) ((char *) (bp) - WSIZE)
 //블록의 포인터 bp를 받고, 블록 풋터를 가리키는 포인터를 리턴함.
@@ -87,12 +89,26 @@ team_t team = {
 
 #define LISTLIMIT 20 // 총 20개의 크기 구간
 
+
 static void *heap_listp=NULL;
 static void *free_list[LISTLIMIT];
 
 static int test=0;
 
 static int find_list_index(size_t size);
+static int find_list_index(size_t size);
+void PUTfree(void*bp, size_t size);
+void Popfree(void*bp);
+static void *coalesce(void *bp);
+static void *extend_heap(size_t words);
+int mm_init(void);
+void *find_fit(size_t asize);
+static void place(void *bp, size_t asize);
+void *mm_malloc(size_t size);
+void mm_free(void *ptr);
+void *mm_realloc(void *ptr, size_t size);
+
+
 
 static void heap_debugger(){
     fprintf(stderr, "=====HEAP_DEBUGGER=====\n");
@@ -149,86 +165,101 @@ static int find_list_index(size_t size) {
 }
 
 void PUTfree(void*bp, size_t size){
-    int idx = 0;
-    void *search_ptr = bp;
-    void *insert_ptr = NULL;
-    
-    while ((idx < LISTLIMIT - 1) && (size > 1)) {
-        size >>= 1;
-        idx++;
-    }
 
-    search_ptr = free_list[idx];
-    while ((search_ptr != NULL) && (GET_SIZE(HDRP(search_ptr)) < size)) {
-        insert_ptr = search_ptr;
-        search_ptr = SUCC_FREEP(search_ptr); 
-    }
+    int idx = find_list_index(size);
+    void *head = free_list[idx];
+
+    SUCC_FREEP(bp) = head;
+    PREC_FREEP(bp) = NULL;
+    if (head != NULL)
+        PREC_FREEP(head) = bp;
+    free_list[idx] = bp;
+
+    // int idx = 0;
+    // void *search_ptr = bp;
+    // void *insert_ptr = NULL;
+    
+    // idx=find_list_index(size);
+
+    // search_ptr = free_list[idx];
+    // while ((search_ptr != NULL) && (GET_SIZE(HDRP(search_ptr)) < size)) {
+    //     insert_ptr = search_ptr;
+    //     search_ptr = SUCC_FREEP(search_ptr); 
+    // }
 
     
-    // Set predecessor and successor
-    if (search_ptr != NULL) {
-        if (insert_ptr != NULL) {
-            SET_PTR(PRED_PTR(bp), search_ptr);
-            SET_PTR(SUCC_PTR(search_ptr), bp);
-            SET_PTR(SUCC_PTR(bp), insert_ptr);
-            SET_PTR(PRED_PTR(insert_ptr), bp);
-        } else {
-            SET_PTR(PRED_PTR(bp), search_ptr);
-            SET_PTR(SUCC_PTR(search_ptr), bp);
-            SET_PTR(SUCC_PTR(bp), NULL);
+    // // Set predecessor and successor
+    // if (search_ptr != NULL) {
+    //     if (insert_ptr != NULL) {
+    //         SET_PTR(PRED_PTR(bp), search_ptr);
+    //         SET_PTR(SUCC_PTR(search_ptr), bp);
+    //         SET_PTR(SUCC_PTR(bp), insert_ptr);
+    //         SET_PTR(PRED_PTR(insert_ptr), bp);
+    //     } else {
+    //         SET_PTR(PRED_PTR(bp), search_ptr);
+    //         SET_PTR(SUCC_PTR(search_ptr), bp);
+    //         SET_PTR(SUCC_PTR(bp), NULL);
             
-            /* Add block to appropriate idx */
-            free_list[idx] = bp;
-        }
-    } else {
-        if (insert_ptr != NULL) {
-            SET_PTR(PRED_PTR(bp), NULL);
-            SET_PTR(SUCC_PTR(bp), insert_ptr);
-            SET_PTR(PRED_PTR(insert_ptr), bp);
-        } else {
-            SET_PTR(PRED_PTR(bp), NULL);
-            SET_PTR(SUCC_PTR(bp), NULL);
+    //         /* Add block to appropriate idx */
+    //         free_list[idx] = bp;
+    //     }
+    // } else {
+    //     if (insert_ptr != NULL) {
+    //         SET_PTR(PRED_PTR(bp), NULL);
+    //         SET_PTR(SUCC_PTR(bp), insert_ptr);
+    //         SET_PTR(PRED_PTR(insert_ptr), bp);
+    //     } else {
+    //         SET_PTR(PRED_PTR(bp), NULL);
+    //         SET_PTR(SUCC_PTR(bp), NULL);
             
-            /* Add block to appropriate idx */
-            free_list[idx] = bp;
-        }
-    }
+    //         /* Add block to appropriate idx */
+    //         free_list[idx] = bp;
+    //     }
+    // }
     
-    return;
+    // return;
 }
 
 
 
 //free_list에서 할당상태 된 블록 빼기 
 void Popfree(void*bp){
-    int idx = 0;
-    size_t size = GET_SIZE(HDRP(bp));
-    // fprintf(stderr, "cur block %p size status: %ld\n", bp, size);
+    size_t size=GET_SIZE(HDRP(bp));
+    int idx = find_list_index(size);
+    void *prev = PREC_FREEP(bp);
+    void *next = SUCC_FREEP(bp);
+
+    if (prev != NULL)
+        SUCC_FREEP(prev) = next;
+    else
+        free_list[idx] = next;
+    if (next != NULL)
+        PREC_FREEP(next) = prev;
+
+
+    // int idx = 0;
+    // size_t size = GET_SIZE(HDRP(bp));
+    // // fprintf(stderr, "cur block %p size status: %ld\n", bp, size);
     
-    /* Select segregated list */
-    while ((idx < LISTLIMIT - 1) && (size > 1)) {
-        size >>= 1;
-        idx++;
-    }
+    // /* Select segregated list */
+    // idx=find_list_index(size);
+    // if (PREC_FREEP(bp) != NULL) {
+    //     if (SUCC_FREEP(bp) != NULL) {
+    //         SET_PTR(SUCC_PTR(PREC_FREEP(bp)), SUCC_FREEP(bp));
+    //         SET_PTR(PRED_PTR(SUCC_FREEP(bp)), PREC_FREEP(bp));
+    //     } else {
+    //         SET_PTR(SUCC_PTR(PREC_FREEP(bp)), NULL);
+    //         free_list[idx] = PREC_FREEP(bp);
+    //     }
+    // } else {
+    //     if (SUCC_FREEP(bp) != NULL) {
+    //         SET_PTR(PRED_PTR(SUCC_FREEP(bp)), NULL);
+    //     } else {
+    //         free_list[idx] = NULL;
+    //     }
+    // }
     
-    if (PREC_FREEP(bp) != NULL) {
-        if (SUCC_FREEP(bp) != NULL) {
-            SET_PTR(SUCC_PTR(PREC_FREEP(bp)), SUCC_FREEP(bp));
-            SET_PTR(PRED_PTR(SUCC_FREEP(bp)), PREC_FREEP(bp));
-        } else {
-            SET_PTR(SUCC_PTR(PREC_FREEP(bp)), NULL);
-            free_list[idx] = PREC_FREEP(bp);
-        }
-    } else {
-        if (SUCC_FREEP(bp) != NULL) {
-            SET_PTR(PRED_PTR(SUCC_FREEP(bp)), NULL);
-        } else {
-            free_list[idx] = NULL;
-        }
-    }
-    
-    return;
-    // heap_debugger2();
+    // return;
 }
 
 static void *coalesce(void *bp){
@@ -289,12 +320,11 @@ static void *coalesce(void *bp){
 }
 
 static void *extend_heap(size_t words){
-    char *bp;
+    void *bp;
     size_t size;
 
-    // fprintf(stderr, "size: %d\n", words);
     size=(words%2) ? (words+1) *WSIZE : words*WSIZE;
-    
+    size=ALIGN(size);
     if((void*)(bp = mem_sbrk(size))==(void*)-1){
         return NULL;
     }
@@ -337,10 +367,8 @@ int mm_init(void)
     PUT(heap_listp + (5*WSIZE),NULL);
     PUT(heap_listp + (6*WSIZE),PACK(MINBLOCKSIZE,0));
     PUT(heap_listp + (7*WSIZE),PACK(0,1));
-    heap_listp += (4*WSIZE);//가용블록의 블록 포인터
-    // heap_listp +=DSIZE;
+    heap_listp = NEXT_BLKP(heap_listp); //가용블록의 블록 포인터
 
-    // heap_debugger();
     if(extend_heap(CHUNKSIZE/WSIZE)==NULL){
         return -1;
     }
@@ -350,6 +378,7 @@ int mm_init(void)
 
 
 void *find_fit(size_t asize) {
+
     int idx = find_list_index(asize);
     void *best_bp = NULL;
     size_t best_size = (size_t)-1; // 매우 큰 값으로 초기화
@@ -373,6 +402,33 @@ void *find_fit(size_t asize) {
         // best-fit은 모든 리스트를 다 탐색해야 하므로 break 없음
     }
     return best_bp; // 없으면 NULL 반환
+
+
+
+
+    // int idx = find_list_index(asize);
+    // void *best_bp = NULL;
+    // size_t best_size = (size_t)-1; // 매우 큰 값으로 초기화
+
+    // // idx부터 LISTLIMIT-1까지 모든 리스트에서 best-fit 탐색
+    // for (; idx < LISTLIMIT; idx++) {
+    //     void *bp = free_list[idx];
+    //     for (; bp != NULL; bp = SUCC_FREEP(bp)) {
+    //         size_t bsize = GET_SIZE(HDRP(bp));
+    //         if (bsize >= asize) {
+    //             if (bsize == asize) {
+    //                 // 완벽하게 맞는 블록 발견 (early return)
+    //                 return bp;
+    //             }
+    //             if (bsize < best_size) {
+    //                 best_size = bsize;
+    //                 best_bp = bp;
+    //             }
+    //         }
+    //     }
+    //     // best-fit은 모든 리스트를 다 탐색해야 하므로 break 없음
+    // }
+    // return best_bp; // 없으면 NULL 반환
 }
 
 
@@ -381,7 +437,7 @@ static void place(void *bp, size_t asize){
     
     size_t csize = GET_SIZE(HDRP(bp));
     size_t remainder = csize - asize;
-
+    
     Popfree(bp);
 
     if (remainder >= MINBLOCKSIZE) {
@@ -393,7 +449,7 @@ static void place(void *bp, size_t asize){
         PUT(FTRP(next_bp), PACK(remainder, 0));
         PUTfree(next_bp, remainder);
     } else {
-        // 블록 분할 불가: 전체 할당
+        // 블록 분할 불가: 
         PUT(HDRP(bp), PACK(csize, 1));
         PUT(FTRP(bp), PACK(csize, 1));
     }
@@ -407,7 +463,7 @@ void *mm_malloc(size_t size)
 {
     size_t newsize;
     size_t extendsize;
-    char *bp;
+    void *bp;
     
     if(heap_listp==NULL){
         mm_init();
@@ -417,10 +473,7 @@ void *mm_malloc(size_t size)
         return NULL;
     }
     
-    if(size<=DSIZE)
-        newsize=MINBLOCKSIZE;
-    else
-        newsize=DSIZE*((size + DSIZE + DSIZE-1)/DSIZE);
+    newsize = MAX(ALIGN(size + WSIZE * 2), MINBLOCKSIZE);
     
     bp=find_fit(newsize);
     //적합한 가용 블록 탐색
@@ -437,6 +490,8 @@ void *mm_malloc(size_t size)
 
     place(bp, newsize);
     
+    // heap_debugger();
+    // heap_debugger2();
     return bp;
 }
 
@@ -460,6 +515,8 @@ void mm_free(void *ptr)
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
+
+
 
 void *mm_realloc(void *ptr, size_t size)
 {

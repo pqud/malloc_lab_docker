@@ -1,0 +1,138 @@
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ns/call  ns/call  name    
+ 65.91      0.58     0.58                             main
+ 18.18      0.74     0.16                             add_range
+  7.39      0.81     0.07  1769124    36.74    36.74  Popfree
+  6.25      0.86     0.06  1769124    31.09    31.09  PUTfree
+  1.14      0.87     0.01   617520    16.19    79.62  place
+  1.14      0.88     0.01    58980   169.55   273.53  extend_heap
+  0.00      0.88     0.00   751032     0.00    72.89  coalesce
+  0.00      0.88     0.00   617520     0.00     0.00  find_fit
+  0.00      0.88     0.00   617520     0.00     0.00  find_list_index
+  0.00      0.88     0.00   617520     0.00   103.98  mm_free
+  0.00      0.88     0.00   617520     0.00   105.68  mm_malloc
+  0.00      0.88     0.00   115176     0.00    92.69  mm_realloc
+  0.00      0.88     0.00      132     0.00   273.53  mm_init
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.002521  2259
+ 1       yes   99%    5848  0.002384  2453
+ 2       yes   99%    6648  0.002735  2430
+ 3       yes   99%    5380  0.002035  2643
+ 4       yes   99%   14400  0.003267  4408
+ 5       yes   88%    4800  0.001805  2659
+ 6       yes   83%    4800  0.001984  2419
+ 7       yes   54%   12000  0.002718  4415
+ 8       yes   47%   24000  0.005315  4516
+ 9       yes   40%   14401  0.005808  2479
+10       yes   35%   14401  0.001966  7326
+Total          76%  112372  0.032538  3454
+
+Perf index = 46 (util) + 40 (thru) = 86/100 
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  us/call  us/call  name    
+ 48.40      0.91     0.91   617520     1.47     1.51  find_fit
+ 29.79      1.47     0.56                             main
+ 11.70      1.69     0.22                             add_range
+  7.45      1.83     0.14  4148952     0.03     0.03  find_list_index
+  1.06      1.85     0.02  1765716     0.01     0.05  PUTfree
+  0.53      1.86     0.01   749148     0.01     0.09  coalesce
+  0.53      1.87     0.01   115176     0.09     0.21  mm_realloc
+  0.53      1.88     0.01                             eval_mm_speed
+  0.00      1.88     0.00  1765716     0.00     0.03  Popfree
+  0.00      1.88     0.00   617520     0.00     0.14  mm_free
+  0.00      1.88     0.00   617520     0.00     1.59  mm_malloc
+  0.00      1.88     0.00   617520     0.00     0.07  place
+  0.00      1.88     0.00    57168     0.00     0.14  extend_heap
+  0.00      1.88     0.00      132     0.00     0.14  mm_init
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.001587  3588
+ 1       yes   99%    5848  0.001915  3053
+ 2       yes   99%    6648  0.002507  2652
+ 3       yes   99%    5380  0.001904  2826
+ 4       yes   99%   14400  0.003319  4339
+ 5       yes   96%    4800  0.003016  1592
+ 6       yes   95%    4800  0.002637  1821
+ 7       yes   54%   12000  0.004412  2720
+ 8       yes   47%   24000  0.072125   333
+ 9       yes   30%   14401  0.003484  4133
+10       yes   32%   14401  0.001807  7968
+Total          77%  112372  0.098713  1138
+
+Perf index = 46 (util) + 40 (thru) = 86/100
+
+realloc 개선한다 치면 LIFO 방식이 나을지도 모르겠는데
+총 시간이 늘었음. 많이. 이건 find_fit을 개선해야 하나?
+
+
+
+
+ach sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  us/call  us/call  name    
+ 41.83      0.64     0.64   618084     1.04     1.06  find_fit
+ 32.68      1.14     0.50                             main
+ 13.73      1.35     0.21                             add_range
+  7.19      1.46     0.11  4209444     0.03     0.03  find_list_index
+  0.65      1.47     0.01  1795680     0.01     0.03  Popfree
+  0.65      1.48     0.01   749604     0.01     0.08  coalesce
+  0.65      1.49     0.01   618084     0.02     0.12  mm_free
+  0.65      1.50     0.01   618084     0.02     0.07  place
+  0.65      1.51     0.01    57696     0.17     0.28  extend_heap
+  0.65      1.52     0.01                             eval_mm_speed
+  0.65      1.53     0.01                             read_trace.constprop.0
+  0.00      1.53     0.00  1795680     0.00     0.03  PUTfree
+  0.00      1.53     0.00   618084     0.00     1.16  mm_malloc
+  0.00      1.53     0.00   115176     0.00     0.10  mm_realloc
+  0.00      1.53     0.00      132     0.00     0.28  mm_init
+
+ %         the percentage of the total running time of the
+time       program used by this function.
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.001667  3416
+ 1       yes   99%    5848  0.001117  5235
+ 2       yes   99%    6648  0.001451  4582
+ 3       yes   99%    5380  0.001190  4523
+ 4       yes   99%   14400  0.002236  6441
+ 5       yes   92%    4800  0.001664  2884
+ 6       yes   90%    4800  0.001475  3255
+ 7       yes   54%   12000  0.002663  4506
+ 8       yes   47%   24000  0.058153   413
+ 9       yes   40%   14401  0.004095  3517
+10       yes   27%   14401  0.001979  7276
+Total          77%  112372  0.077689  1446
+
+Perf index = 46 (util) + 40 (thru) = 86/100
+
+
+
+Results for mm malloc:
+trace  valid  util     ops      secs  Kops
+ 0       yes   99%    5694  0.001674  3402
+ 1       yes   99%    5848  0.002044  2861
+ 2       yes   99%    6648  0.002280  2915
+ 3       yes   99%    5380  0.002173  2476
+ 4       yes   99%   14400  0.003318  4340
+ 5       yes   96%    4800  0.003898  1231
+ 6       yes   95%    4800  0.002993  1604
+ 7       yes   54%   12000  0.003403  3527
+ 8       yes   47%   24000  0.069003   348
+ 9       yes   30%   14401  0.005137  2803
+10       yes   45%   14401  0.004185  3441
+Total          78%  112372  0.100108  1123
+
+Perf index = 47 (util) + 40 (thru) = 87/100
+
+
