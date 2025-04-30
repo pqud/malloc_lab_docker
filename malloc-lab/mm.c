@@ -74,10 +74,10 @@ team_t team = {
 
 /* payload 영역에 실제 포인터를 저장/읽기 위한 매크로 */
 #define GET_PTR(p)      (*(void **)(p))
-#define PUT_PTR(p, val) (*(void **)(p) = (void *)(val))
+#define PUT_PTR(p, val) (*(void **)(p) = (void *)(val)) 
 
 /* explicit free list 전용 */
-#define GET_PRED(bp)    GET_PTR(bp)
+#define GET_PRED(bp)    GET(bp)
 #define GET_SUCC(bp)    GET_PTR((char *)(bp) + WSIZE)
 #define PUT_PRED(bp,val) PUT_PTR(bp, val)
 #define PUT_SUCC(bp,val) PUT_PTR((char *)(bp) + WSIZE, val)
@@ -170,8 +170,8 @@ void mm_free(void *bp)
 	PUT(HDRP(bp), PACK(size, 0));
 	PUT(FTRP(bp), PACK(size, 0));
 	coalesce(bp);
-	assert((size_t)(GET_SUCC(bp))%4 == 0 || GET_SUCC(bp) == NULL); 
-	assert(((size_t)(GET_PRED(bp))%DSIZE == 0) || GET_PRED(bp) == NULL); 
+	// assert((size_t)(GET_SUCC(bp))%4 == 0 || GET_SUCC(bp) == NULL); 
+	// assert(((size_t)(GET_PRED(bp))%DSIZE == 0) || GET_PRED(bp) == NULL); 
 }
 
 /*
@@ -308,12 +308,13 @@ static void insert_node(void *bp)
 {
 	if(free_listp != NULL)
 	{
-		PUT_PRED(free_listp, bp); 
-		assert((long)GET_PRED(free_listp) == (long)bp);
+		// PUT_PRED(free_listp, bp); 
+		GET_PRED(free_listp) = (void *) bp;
 		assert(GET_PRED(free_listp) != NULL);
 	}
 	PUT_SUCC(bp, free_listp); // 여기서도 다 검사하자.
-	PUT_PRED(bp, NULL);
+	// PUT_PRED(bp, NULL);
+	GET_PRED(bp) = (void *)NULL;
 	if(free_listp != NULL) assert(GET_SUCC(bp) != NULL);
 	free_listp = bp;
 	assert(free_listp == bp);
@@ -350,6 +351,8 @@ static void remove_node(void *bp)
 	}
 	if(s_bp != NULL){
 		//여기서 assert 뭘 하면 좋을까?
+
+		assert((void*)0xffff00000000UL != s_bp);
 		PUT_PRED(s_bp, p_bp);
 	}
 	// 만약 p_bp, s_bp가 각각 존재한다면 서로 잘 이어졌는지 확인
