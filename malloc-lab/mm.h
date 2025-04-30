@@ -6,12 +6,11 @@ extern void mm_free (void *ptr);
 extern void *mm_realloc(void *ptr, size_t size);
 static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
-static char *heap_listp;
 static char *free_listp;
-static int *node_num;
+static char *heap_listp;
 static void *find_fit(size_t asize);
 static void place(void *bp, size_t asize);
-static void remove_node(void *bp);
+static void remove_node(char *bp);
 static void insert_node(void *bp);
 static void print_list(void);
 
