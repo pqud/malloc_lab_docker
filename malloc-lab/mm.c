@@ -88,14 +88,17 @@ team_t team = {
 #define SET_PTR(p, bp) (*(uintptr_t *)(p) = (uintptr_t)(bp))
 
 #define LISTLIMIT 20 // 총 20개의 크기 구간
+#define SIZE_CLASS_MIN 1
+#define SIZE_CLASS_MAX 104858
 
 
 static void *heap_listp=NULL;
 static void *free_list[LISTLIMIT];
+static int size_class_access_count[LISTLIMIT] = {0};
+
 
 static int test=0;
 
-static int find_list_index(size_t size);
 static int find_list_index(size_t size);
 void PUTfree(void*bp, size_t size);
 void Popfree(void*bp);
@@ -153,113 +156,131 @@ static void heap_debugger2() {
 }
 
 
-// 블록 사이즈에 따라 몇 번째 리스트에 들어갈지 결정
+// // 블록 사이즈에 따라 몇 번째 리스트에 들어갈지 결정
+// static int find_list_index(size_t size) {
+//     int idx = 0;
+//     size_t temp = size;
+//     while ((idx < LISTLIMIT - 1) && (temp > 1)) {
+//         temp >>= 1; // 2로 계속 나누기
+//         idx++;
+//     }
+//     size_class_access_count[idx]++;  // 접근 카운트 증가
+//     return idx;
+// }
+
+// static int find_list_index(size_t size) {
+//     int idx = 0;
+//     size_t temp = size;
+//     while (idx < LISTLIMIT - 1 && temp > 1) {
+//         temp >>= 1; // 2로 계속 나누기
+//         idx++;
+//     }
+//     size_class_access_count[idx]++;  // 접근 카운트 증가
+//     return idx;
+// }
+
 static int find_list_index(size_t size) {
-    int idx = 0;
+    if (size <= 32) {return 0;}
+    if (size <= 64) {return 1;}
+    if (size <= 128) {return 2;}
+    if (size <= 160) {return 3;}
+    if (size <= 192) {return 4;}
+    if (size <= 256) {return 5;}
+    if (size <= 512) {return 6;}
+    if (size <= 1024) {return 7;}
+    // 이후는 2의 제곱수 단위
+    int idx = 8;
     size_t temp = size;
-    while (idx < LISTLIMIT - 1 && temp > 1) {
-        temp >>= 1; // 2로 계속 나누기
+    while (idx < LISTLIMIT - 1 && temp > 1024) {
+        temp >>= 1;
         idx++;
     }
+    
     return idx;
 }
 
+
+
+// static int find_list_index(size_t size) {
+//     int class_size = (SIZE_CLASS_MAX - SIZE_CLASS_MIN + 1) / LISTLIMIT; // 각 클래스의 범위 크기
+//     if (class_size == 0) class_size = 1; // 0으로 나누기 방지
+
+//     int idx = (size - SIZE_CLASS_MIN) / class_size;
+//     if (idx < 0) idx = 0;
+//     if (idx >= LISTLIMIT) idx = LISTLIMIT - 1;
+
+//     size_class_access_count[idx]++;
+//     return idx;
+// }
+
+
+void print_size_class_access_count(void) {
+    printf("Size class 접근 횟수:\n");
+    for (int i = 0; i < LISTLIMIT; i++) {
+        printf("Class %2d: %d\n", i, size_class_access_count[i]);
+    }
+}
+
+
 void PUTfree(void*bp, size_t size){
 
+    // int idx = find_list_index(size);
+    // void *head = free_list[idx];
+
+    // SUCC_FREEP(bp) = head;
+    // PREC_FREEP(bp) = NULL;
+    // if (head != NULL)
+    //     PREC_FREEP(head) = bp;
+    // free_list[idx] = bp;
+
     int idx = find_list_index(size);
-    void *head = free_list[idx];
+    void *search_ptr = free_list[idx];
+    void *insert_ptr = NULL;
 
-    SUCC_FREEP(bp) = head;
-    PREC_FREEP(bp) = NULL;
-    if (head != NULL)
-        PREC_FREEP(head) = bp;
-    free_list[idx] = bp;
+    while (search_ptr && GET_SIZE(HDRP(search_ptr)) < size) {
+        insert_ptr = search_ptr;
+        search_ptr = SUCC_FREEP(search_ptr);
+    }
 
-    // int idx = 0;
-    // void *search_ptr = bp;
-    // void *insert_ptr = NULL;
-    
-    // idx=find_list_index(size);
+    SUCC_FREEP(bp) = search_ptr;
+    PREC_FREEP(bp) = insert_ptr;
 
-    // search_ptr = free_list[idx];
-    // while ((search_ptr != NULL) && (GET_SIZE(HDRP(search_ptr)) < size)) {
-    //     insert_ptr = search_ptr;
-    //     search_ptr = SUCC_FREEP(search_ptr); 
-    // }
-
-    
-    // // Set predecessor and successor
-    // if (search_ptr != NULL) {
-    //     if (insert_ptr != NULL) {
-    //         SET_PTR(PRED_PTR(bp), search_ptr);
-    //         SET_PTR(SUCC_PTR(search_ptr), bp);
-    //         SET_PTR(SUCC_PTR(bp), insert_ptr);
-    //         SET_PTR(PRED_PTR(insert_ptr), bp);
-    //     } else {
-    //         SET_PTR(PRED_PTR(bp), search_ptr);
-    //         SET_PTR(SUCC_PTR(search_ptr), bp);
-    //         SET_PTR(SUCC_PTR(bp), NULL);
-            
-    //         /* Add block to appropriate idx */
-    //         free_list[idx] = bp;
-    //     }
-    // } else {
-    //     if (insert_ptr != NULL) {
-    //         SET_PTR(PRED_PTR(bp), NULL);
-    //         SET_PTR(SUCC_PTR(bp), insert_ptr);
-    //         SET_PTR(PRED_PTR(insert_ptr), bp);
-    //     } else {
-    //         SET_PTR(PRED_PTR(bp), NULL);
-    //         SET_PTR(SUCC_PTR(bp), NULL);
-            
-    //         /* Add block to appropriate idx */
-    //         free_list[idx] = bp;
-    //     }
-    // }
-    
-    // return;
+    if (search_ptr)
+        PREC_FREEP(search_ptr) = bp;
+    if (insert_ptr)
+        SUCC_FREEP(insert_ptr) = bp;
+    else
+        free_list[idx] = bp;
 }
 
 
 
 //free_list에서 할당상태 된 블록 빼기 
 void Popfree(void*bp){
-    size_t size=GET_SIZE(HDRP(bp));
+    // size_t size=GET_SIZE(HDRP(bp));
+    // int idx = find_list_index(size);
+    // void *prev = PREC_FREEP(bp);
+    // void *next = SUCC_FREEP(bp);
+
+    // if (prev != NULL)
+    //     SUCC_FREEP(prev) = next;
+    // else
+    //     free_list[idx] = next;
+    // if (next != NULL)
+    //     PREC_FREEP(next) = prev;
+
+
+    size_t size = GET_SIZE(HDRP(bp));
     int idx = find_list_index(size);
     void *prev = PREC_FREEP(bp);
     void *next = SUCC_FREEP(bp);
 
-    if (prev != NULL)
+    if (prev)
         SUCC_FREEP(prev) = next;
     else
         free_list[idx] = next;
-    if (next != NULL)
+    if (next)
         PREC_FREEP(next) = prev;
-
-
-    // int idx = 0;
-    // size_t size = GET_SIZE(HDRP(bp));
-    // // fprintf(stderr, "cur block %p size status: %ld\n", bp, size);
-    
-    // /* Select segregated list */
-    // idx=find_list_index(size);
-    // if (PREC_FREEP(bp) != NULL) {
-    //     if (SUCC_FREEP(bp) != NULL) {
-    //         SET_PTR(SUCC_PTR(PREC_FREEP(bp)), SUCC_FREEP(bp));
-    //         SET_PTR(PRED_PTR(SUCC_FREEP(bp)), PREC_FREEP(bp));
-    //     } else {
-    //         SET_PTR(SUCC_PTR(PREC_FREEP(bp)), NULL);
-    //         free_list[idx] = PREC_FREEP(bp);
-    //     }
-    // } else {
-    //     if (SUCC_FREEP(bp) != NULL) {
-    //         SET_PTR(PRED_PTR(SUCC_FREEP(bp)), NULL);
-    //     } else {
-    //         free_list[idx] = NULL;
-    //     }
-    // }
-    
-    // return;
 }
 
 static void *coalesce(void *bp){
@@ -403,32 +424,6 @@ void *find_fit(size_t asize) {
     }
     return best_bp; // 없으면 NULL 반환
 
-
-
-
-    // int idx = find_list_index(asize);
-    // void *best_bp = NULL;
-    // size_t best_size = (size_t)-1; // 매우 큰 값으로 초기화
-
-    // // idx부터 LISTLIMIT-1까지 모든 리스트에서 best-fit 탐색
-    // for (; idx < LISTLIMIT; idx++) {
-    //     void *bp = free_list[idx];
-    //     for (; bp != NULL; bp = SUCC_FREEP(bp)) {
-    //         size_t bsize = GET_SIZE(HDRP(bp));
-    //         if (bsize >= asize) {
-    //             if (bsize == asize) {
-    //                 // 완벽하게 맞는 블록 발견 (early return)
-    //                 return bp;
-    //             }
-    //             if (bsize < best_size) {
-    //                 best_size = bsize;
-    //                 best_bp = bp;
-    //             }
-    //         }
-    //     }
-    //     // best-fit은 모든 리스트를 다 탐색해야 하므로 break 없음
-    // }
-    // return best_bp; // 없으면 NULL 반환
 }
 
 
@@ -489,9 +484,7 @@ void *mm_malloc(size_t size)
     }
 
     place(bp, newsize);
-    
-    // heap_debugger();
-    // heap_debugger2();
+    // print_size_class_access_count();
     return bp;
 }
 
@@ -516,77 +509,125 @@ void mm_free(void *ptr)
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
 
+ void *mm_realloc(void *ptr, size_t size)
+ {
+     void *oldptr = ptr;
+     void *newptr;
+     size_t oldsize= GET_SIZE(HDRP(oldptr));
+     
+     if(size==0){
+         mm_free(ptr);
+         return NULL;
+     }
+ 
+     if(ptr==NULL)
+         return(mm_malloc(size));
+ 
+     if((int)size<0) return NULL;    
+ 
+     // 요청 사이즈를 블록 최소 크기 단위로 정렬
+     size_t asize = MAX(DSIZE*((size + DSIZE + DSIZE-1)/DSIZE), MINBLOCKSIZE);
+ 
+     //분할 가능하면 분할 
+     if(asize<=oldsize){
+         //기본 공간 재사용
+         return ptr;
+     }
+ 
+     void *next = NEXT_BLKP(ptr);
+     if (!GET_ALLOC(HDRP(next)) && (oldsize + GET_SIZE(HDRP(next))) >= asize) {
+         // 다음 블록이 free일 때 병합해서 in-place 확장
+         Popfree(next);
+         size_t newsize = oldsize + GET_SIZE(HDRP(next));
+         PUT(HDRP(ptr), PACK(newsize, 1));
+         PUT(FTRP(ptr), PACK(newsize, 1));
+         return ptr;
+     }    
+ 
+     //그 외
+     newptr = mm_malloc(size);
+     if (newptr == NULL) return NULL;
+     if (size < oldsize) oldsize = size; //원래 size가 요청사이즈보다 크면, 원래 사이즈를 요청사이즈로 
+     memcpy(newptr, oldptr, oldsize); //oldptr중 copySize만큼을 newptr에 복사. 
+     mm_free(oldptr); //oldptr을 반환.
+ 
+     return newptr;
+ 
+ }
 
 
-void *mm_realloc(void *ptr, size_t size)
-{
 
-    void *oldptr = ptr;
-    void *newptr;
-    size_t oldsize= GET_SIZE(HDRP(oldptr));
-    
-    if(size==0){
-        mm_free(ptr);
-        return NULL;
-    }
+//  void *mm_realloc(void *ptr, size_t size)
+//  {
+ 
+//      void *oldptr = ptr;
+//      void *newptr;
+//      size_t oldsize= GET_SIZE(HDRP(oldptr));
+     
+//      if(size==0){
+//          mm_free(ptr);
+//          return NULL;
+//      }
+ 
+//      if(ptr==NULL)
+//          return(mm_malloc(size));
+ 
+//      if((int)size<0) return NULL;    
+ 
+//      // 요청 사이즈를 블록 최소 크기 단위로 정렬
+//      size_t asize = MAX(DSIZE*((size + DSIZE + DSIZE-1)/DSIZE), MINBLOCKSIZE);
+ 
+//      //분할 가능하면 분할 
+//      if(asize<=oldsize){
+//          size_t remainder = oldsize - asize;
+//          if(oldsize-asize>=MINBLOCKSIZE){
+//              // 블록 분할
+//              fprintf(stderr, "case 1\n");
+//              PUT(HDRP(oldptr), PACK(asize, 1));
+//              PUT(FTRP(oldptr), PACK(asize, 1));
+//              void *split_bp = NEXT_BLKP(oldptr);
+//              PUT(HDRP(split_bp), PACK(remainder, 0));
+//              PUT(FTRP(split_bp), PACK(remainder, 0));
+//              coalesce(split_bp);
+//              fprintf(stderr, "case 1 END \n");
+ 
+//          }
+//          return ptr;
+//      }
+ 
+//      //다음 블록이 free이고 합쳐서 충분하면 in-place 확장
+//      void *next = NEXT_BLKP(oldptr);
+//      if (!GET_ALLOC(HDRP(next))) {
+//          size_t combined_size = oldsize + GET_SIZE(HDRP(next));
+//          if (combined_size >= asize) {
+//              Popfree(next);
+//              size_t remainder = combined_size - asize;
+//              if (remainder >= MINBLOCKSIZE) {
+//                  PUT(HDRP(oldptr), PACK(asize, 1));
+//                  PUT(FTRP(oldptr), PACK(asize, 1));
+//                  void *split_bp = NEXT_BLKP(oldptr);
+//                  PUT(HDRP(split_bp), PACK(remainder, 0));
+//                  PUT(FTRP(split_bp), PACK(remainder, 0));
+//                  PUTfree(split_bp, remainder);
+//                  coalesce(split_bp);
+//              } else {
+//                  PUT(HDRP(oldptr), PACK(combined_size, 1));
+//                  PUT(FTRP(oldptr), PACK(combined_size, 1));
+//              }
 
-    if(ptr==NULL)
-        return(mm_malloc(size));
+//              return oldptr;
+//          }
+//      }
+     
+ 
+//      //그 외
+//      newptr = mm_malloc(size);
+//      if (newptr == NULL) return NULL;
+//      if (size < oldsize) oldsize = size; //원래 size가 요청사이즈보다 크면, 원래 사이즈를 요청사이즈로 
+//      memcpy(newptr, oldptr, oldsize); //oldptr중 copySize만큼을 newptr에 복사. 
+//      mm_free(oldptr); //oldptr을 반환.
+ 
 
-    if((int)size<0) return NULL;    
-
-    // 요청 사이즈를 블록 최소 크기 단위로 정렬
-    size_t asize = MAX(DSIZE*((size + DSIZE + DSIZE-1)/DSIZE), MINBLOCKSIZE);
-
-    //분할 가능하면 분할 
-    if(asize<=oldsize){
-        size_t remainder = oldsize - asize;
-        if(oldsize-asize>=MINBLOCKSIZE){
-            // 블록 분할
-            fprintf(stderr, "case 1\n");
-            PUT(HDRP(oldptr), PACK(asize, 1));
-            PUT(FTRP(oldptr), PACK(asize, 1));
-            void *split_bp = NEXT_BLKP(oldptr);
-            PUT(HDRP(split_bp), PACK(remainder, 0));
-            PUT(FTRP(split_bp), PACK(remainder, 0));
-            coalesce(split_bp);
-            fprintf(stderr, "case 1 END \n");
-
-        }
-        return ptr;
-    }
-
-    //다음 블록이 free이고 합쳐서 충분하면 in-place 확장
-    void *next = NEXT_BLKP(oldptr);
-    if (!GET_ALLOC(HDRP(next))) {
-        size_t combined_size = oldsize + GET_SIZE(HDRP(next));
-        if (combined_size >= asize) {
-            Popfree(next);
-            size_t remainder = combined_size - asize;
-            if (remainder >= MINBLOCKSIZE) {
-                PUT(HDRP(oldptr), PACK(asize, 1));
-                PUT(FTRP(oldptr), PACK(asize, 1));
-                void *split_bp = NEXT_BLKP(oldptr);
-                PUT(HDRP(split_bp), PACK(remainder, 0));
-                PUT(FTRP(split_bp), PACK(remainder, 0));
-                PUTfree(split_bp, remainder);
-                coalesce(split_bp);
-            } else {
-                PUT(HDRP(oldptr), PACK(combined_size, 1));
-                PUT(FTRP(oldptr), PACK(combined_size, 1));
-            }
-            return oldptr;
-        }
-    }
-    
-
-    //그 외
-    newptr = mm_malloc(size);
-    if (newptr == NULL) return NULL;
-    if (size < oldsize) oldsize = size; //원래 size가 요청사이즈보다 크면, 원래 사이즈를 요청사이즈로 
-    memcpy(newptr, oldptr, oldsize); //oldptr중 copySize만큼을 newptr에 복사. 
-    mm_free(oldptr); //oldptr을 반환.
-
-    return newptr;
-
-}
+//      return newptr;
+ 
+//  }
